@@ -1,54 +1,92 @@
-use display_interface_spi::SPIInterfaceNoCS;
-use embedded_graphics::{draw_target::DrawTarget, pixelcolor::Rgb565, prelude::*};
-use esp_idf_hal::{
-    delay::Ets,
-    gpio::{AnyIOPin, Gpio12, Gpio13, Gpio38, Gpio5, Gpio6, Gpio7, Gpio8, Gpio9, PinDriver},
-    interrupt::IntrFlags,
-    spi::{config::Config, config::DriverConfig, Dma, SpiDeviceDriver, SpiDriver, SPI2},
-};
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
-use mipidsi::Builder;
-use std::error::Error;
 
-fn main() -> Result<(), Box<dyn Error>> {
+use std::thread;
+use std::time::Duration;
+
+use anyhow::Result;
+
+use esp_idf_hal::delay::Ets;
+use esp_idf_hal::gpio::*;
+use esp_idf_hal::peripherals::Peripherals;
+use esp_idf_hal::spi::*;
+use esp_idf_hal::units::FromValueType;
+
+use display_interface_spi::SPIInterfaceNoCS;
+
+use embedded_hal::spi::MODE_3;
+
+use embedded_graphics::prelude::*;
+use embedded_graphics::{pixelcolor::Rgb565, primitives::Rectangle};
+
+use mipidsi::{Builder, Orientation};
+
+fn main() -> Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
     // implemented by esp-idf-sys might not link properly. See https://github.com/esp-rs/esp-idf-template/issues/71
     esp_idf_sys::link_patches();
     // Bind the log crate to the ESP Logging facilities
     esp_idf_svc::log::EspLogger::initialize_default();
 
-    let dc = PinDriver::input_output_od(unsafe { Gpio7::new() })?;
-    let rst = PinDriver::input_output_od(unsafe { Gpio5::new() })?;
+    let peripherals = Peripherals::take().unwrap();
+    let spi = peripherals.spi2;
+
+    let rst = PinDriver::output(peripherals.pins.gpio5)?;
+    let dc = PinDriver::output(peripherals.pins.gpio7)?;
+    let mut backlight = PinDriver::output(peripherals.pins.gpio38)?;
+    let mut power = PinDriver::output(peripherals.pins.gpio15)?;
+    let sclk = peripherals.pins.gpio12;
+    let sda = peripherals.pins.gpio10;
+    //let sdi = peripherals.pins.gpio8;
+    let cs = peripherals.pins.gpio6;
+
     let mut delay = Ets;
 
-    let spi = unsafe { SPI2::new() };
-    let sclk = unsafe { Gpio8::new() };
-    let sdo = unsafe { Gpio9::new() };
-    let cs = unsafe { Gpio6::new() };
-    let bl = unsafe { Gpio38::new() };
+    // configuring the spi interface, note that in order for the ST7789 to work, the data_mode needs to be set to MODE_3
+    let config = config::Config::new()
+        .baudrate(26.MHz().into())
+        .data_mode(MODE_3);
 
-    let config = DriverConfig::new();
-    let config = config.dma(Dma::Channel1(320 * 170 * 2 + 8));
-    //let config = config.intr_flags();
+    let device = SpiDeviceDriver::new_single(
+        spi,
+        sclk,
+        sda,
+        None::<AnyIOPin>, //Some(sdi), //
+        Some(cs),
+        &SpiDriverConfig::new(),
+        &config,
+    )?;
 
-    let spi = SpiDriver::new(spi, sclk, sdo, None::<AnyIOPin>, &config)?;
-    let spi = SpiDeviceDriver::new(spi, Some(cs), &Config::new())?;
+    // display interface abstraction from SPI and DC
+    let di = SPIInterfaceNoCS::new(device, dc);
 
-    // create a DisplayInterface from SPI and DC pin, with no manual CS control
-    let di = SPIInterfaceNoCS::new(spi, dc);
-
-    // create the ILI9486 display driver from the display interface and optional RST pin
+    // create driver
     let mut display = Builder::st7789(di)
+        //.with_display_size(320, 240)
+        // set default orientation
+        //.with_orientation(Orientation::Portrait(false))
+        // initialize
         .init(&mut delay, Some(rst))
-        .map_err(|_| Box::<dyn Error>::from("display init"))?;
+        .unwrap();
 
-    let mut bl = PinDriver::input_output_od(bl)?;
-    bl.set_high()?;
+    power.set_high()?;
 
-    // clear the display to black
-    display
-        .clear(Rgb565::RED)
-        .map_err(|_| Box::<dyn Error>::from("clear display"))?;
+    // turn on the backlight
+    backlight.set_high()?;
+    //let raw_image_data = ImageRawLE::new(include_bytes!("../examples/assets/ferris.raw"), 86);
+    //let ferris = Image::new(&raw_image_data, Point::new(0, 0));
 
-    Ok(())
+    // draw image on red background
+    display.clear(Rgb565::RED).unwrap();
+    //ferris.draw(&mut display).unwrap();
+
+    println!("Image printed!");
+
+    loop {
+        display.clear(Rgb565::RED).unwrap();
+        thread::sleep(Duration::from_millis(1000));
+        display.clear(Rgb565::YELLOW).unwrap();
+        thread::sleep(Duration::from_millis(1000));
+        display.clear(Rgb565::BLUE).unwrap();
+        thread::sleep(Duration::from_millis(1000));
+    }
 }
