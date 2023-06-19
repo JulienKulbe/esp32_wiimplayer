@@ -8,15 +8,11 @@ use anyhow::Result;
 use esp_idf_hal::delay::Ets;
 use esp_idf_hal::gpio::*;
 use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_hal::spi::*;
-use esp_idf_hal::units::FromValueType;
 
-use display_interface_spi::SPIInterfaceNoCS;
+use display_interface_parallel_gpio::*;
 
-use embedded_hal::spi::MODE_3;
-
+use embedded_graphics::pixelcolor::Rgb565;
 use embedded_graphics::prelude::*;
-use embedded_graphics::{pixelcolor::Rgb565, primitives::Rectangle};
 
 use mipidsi::{Builder, Orientation};
 
@@ -28,47 +24,40 @@ fn main() -> Result<()> {
     esp_idf_svc::log::EspLogger::initialize_default();
 
     let peripherals = Peripherals::take().unwrap();
-    let spi = peripherals.spi2;
 
     let rst = PinDriver::output(peripherals.pins.gpio5)?;
     let dc = PinDriver::output(peripherals.pins.gpio7)?;
+    let wr = PinDriver::output(peripherals.pins.gpio8)?;
+    let mut rd = PinDriver::output(peripherals.pins.gpio9)?;
+
     let mut backlight = PinDriver::output(peripherals.pins.gpio38)?;
     let mut power = PinDriver::output(peripherals.pins.gpio15)?;
-    let sclk = peripherals.pins.gpio12;
-    let sda = peripherals.pins.gpio10;
-    //let sdi = peripherals.pins.gpio8;
-    let cs = peripherals.pins.gpio6;
-
     let mut delay = Ets;
 
-    // configuring the spi interface, note that in order for the ST7789 to work, the data_mode needs to be set to MODE_3
-    let config = config::Config::new()
-        .baudrate(26.MHz().into())
-        .data_mode(MODE_3);
+    power.set_high()?;
+    rd.set_high()?;
 
-    let device = SpiDeviceDriver::new_single(
-        spi,
-        sclk,
-        sda,
-        None::<AnyIOPin>, //Some(sdi), //
-        Some(cs),
-        &SpiDriverConfig::new(),
-        &config,
-    )?;
+    let bus = Generic8BitBus::new((
+        PinDriver::output(peripherals.pins.gpio39)?,
+        PinDriver::output(peripherals.pins.gpio40)?,
+        PinDriver::output(peripherals.pins.gpio41)?,
+        PinDriver::output(peripherals.pins.gpio42)?,
+        PinDriver::output(peripherals.pins.gpio45)?,
+        PinDriver::output(peripherals.pins.gpio46)?,
+        PinDriver::output(peripherals.pins.gpio47)?,
+        PinDriver::output(peripherals.pins.gpio48)?,
+    ))
+    .expect("Unable to initialize 8bit bus");
 
-    // display interface abstraction from SPI and DC
-    let di = SPIInterfaceNoCS::new(device, dc);
+    let di = PGPIO8BitInterface::new(bus, dc, wr);
 
     // create driver
     let mut display = Builder::st7789(di)
-        //.with_display_size(320, 240)
-        // set default orientation
-        //.with_orientation(Orientation::Portrait(false))
-        // initialize
+        .with_display_size(320, 170)
+        .with_orientation(Orientation::Portrait(false))
+        .with_color_order(mipidsi::ColorOrder::Bgr)
         .init(&mut delay, Some(rst))
         .unwrap();
-
-    power.set_high()?;
 
     // turn on the backlight
     backlight.set_high()?;
@@ -76,17 +65,17 @@ fn main() -> Result<()> {
     //let ferris = Image::new(&raw_image_data, Point::new(0, 0));
 
     // draw image on red background
-    display.clear(Rgb565::RED).unwrap();
+    display.clear(Rgb565::GREEN).unwrap();
     //ferris.draw(&mut display).unwrap();
 
-    println!("Image printed!");
+    println!("Cleared display!");
 
     loop {
-        display.clear(Rgb565::RED).unwrap();
+        //display.clear(Rgb565::RED).unwrap();
         thread::sleep(Duration::from_millis(1000));
-        display.clear(Rgb565::YELLOW).unwrap();
-        thread::sleep(Duration::from_millis(1000));
-        display.clear(Rgb565::BLUE).unwrap();
-        thread::sleep(Duration::from_millis(1000));
+        //display.clear(Rgb565::YELLOW).unwrap();
+        //thread::sleep(Duration::from_millis(1000));
+        //display.clear(Rgb565::BLUE).unwrap();
+        //thread::sleep(Duration::from_millis(1000));
     }
 }
