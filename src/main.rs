@@ -1,21 +1,35 @@
-use anyhow::anyhow;
-use anyhow::Result;
+use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
+
+use anyhow::{anyhow, Result};
 use display_interface_parallel_gpio::*;
-use embedded_graphics::mono_font::MonoTextStyle;
-use embedded_graphics::pixelcolor::Rgb565;
-use embedded_graphics::prelude::*;
-use embedded_graphics::text::Text;
 use embedded_graphics::{
     mono_font::ascii::FONT_6X10,
+    mono_font::MonoTextStyle,
+    pixelcolor::Rgb565,
+    prelude::*,
     primitives::{PrimitiveStyleBuilder, Rectangle},
+    text::Text,
 };
-use esp_idf_hal::delay::Ets;
-use esp_idf_hal::gpio::*;
-use esp_idf_hal::peripherals::Peripherals;
-use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
-use mipidsi::{Builder, Orientation};
-use std::thread;
-use std::time::Duration;
+use esp_idf_hal::{delay::Ets, gpio::*, peripherals::Peripherals};
+use mipidsi::{models::ST7789, Builder, Display, Orientation};
+use std::{thread, time::Duration};
+
+// region:    --- Type Aliases
+type LgBus<'a> = Generic8BitBus<
+    PinDriver<'a, Gpio39, Output>,
+    PinDriver<'a, Gpio40, Output>,
+    PinDriver<'a, Gpio41, Output>,
+    PinDriver<'a, Gpio42, Output>,
+    PinDriver<'a, Gpio45, Output>,
+    PinDriver<'a, Gpio46, Output>,
+    PinDriver<'a, Gpio47, Output>,
+    PinDriver<'a, Gpio48, Output>,
+>;
+type LgInterface<'a> =
+    PGPIO8BitInterface<LgBus<'a>, PinDriver<'a, Gpio7, Output>, PinDriver<'a, Gpio8, Output>>;
+type LgDisplayLifetime<'a> = Display<LgInterface<'a>, ST7789, PinDriver<'a, Gpio5, Output>>;
+type LgDisplay = LgDisplayLifetime<'static>;
+// endregion: --- Type Aliases
 
 fn main() -> Result<()> {
     // It is necessary to call this function once. Otherwise some patches to the runtime
@@ -38,7 +52,7 @@ fn main() -> Result<()> {
     power.set_high()?;
     rd.set_high()?;
 
-    let bus = Generic8BitBus::new((
+    let bus: LgBus = Generic8BitBus::new((
         PinDriver::output(peripherals.pins.gpio39)?,
         PinDriver::output(peripherals.pins.gpio40)?,
         PinDriver::output(peripherals.pins.gpio41)?,
@@ -50,12 +64,12 @@ fn main() -> Result<()> {
     ))
     .expect("Unable to initialize 8bit bus");
 
-    let di = PGPIO8BitInterface::new(bus, dc, wr);
+    let di: LgInterface = PGPIO8BitInterface::new(bus, dc, wr);
 
     // create driver
     let mut display = Builder::st7789(di)
-        .with_display_size(320, 170)
-        .with_orientation(Orientation::Landscape(true))
+        .with_display_size(170, 320)
+        .with_orientation(Orientation::Portrait(true))
         .with_invert_colors(mipidsi::ColorInversion::Inverted)
         .init(&mut delay, Some(rst))
         .unwrap();
@@ -72,20 +86,25 @@ fn main() -> Result<()> {
     println!("Cleared display!");
 
     loop {
-        set_display_color(&mut display, Rgb565::GREEN, "GREEN")?;
-        set_display_color(&mut display, Rgb565::RED, "RED")?;
-        set_display_color(&mut display, Rgb565::YELLOW, "YELLOW")?;
-        set_display_color(&mut display, Rgb565::BLUE, "BLUE")?;
+        draw_rectangle(&mut display, Rgb565::GREEN, 300)?;
+        draw_rectangle(&mut display, Rgb565::BLUE, 250)?;
+        draw_rectangle(&mut display, Rgb565::RED, 200)?;
+        draw_rectangle(&mut display, Rgb565::MAGENTA, 150)?;
+        draw_rectangle(&mut display, Rgb565::YELLOW, 100)?;
+        draw_rectangle(&mut display, Rgb565::CYAN, 50)?;
+        thread::sleep(Duration::from_secs(30));
+
+        // set_display_color(&mut display, Rgb565::GREEN, "GREEN")?;
+        // set_display_color(&mut display, Rgb565::RED, "RED")?;
+        // set_display_color(&mut display, Rgb565::YELLOW, "YELLOW")?;
+        // set_display_color(&mut display, Rgb565::BLUE, "BLUE")?;
     }
 }
 
-fn set_display_color<DT>(display: &mut DT, color: Rgb565, text: &str) -> Result<()>
-where
-    DT: DrawTarget<Color = Rgb565>,
-{
+fn set_display_color(display: &mut LgDisplay, color: Rgb565, text: &str) -> Result<()> {
     println!("Draw color {text}");
 
-    Rectangle::new(Point::new(0, 0), Size::new(200, 100))
+    Rectangle::new(Point::new(50, 50), Size::new(200, 100))
         .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build())
         .draw(display)
         .map_err(|_| anyhow!("unable to draw rectangle"))?;
@@ -98,6 +117,15 @@ where
         .map_err(|_| anyhow!("unable to draw text"))?;
 
     thread::sleep(Duration::from_secs(10));
+
+    Ok(())
+}
+
+fn draw_rectangle(display: &mut LgDisplay, color: Rgb565, size: u32) -> Result<()> {
+    Rectangle::new(Point::new(0, 0), Size::new(size, size))
+        .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build())
+        .draw(display)
+        .map_err(|_| anyhow!("unable to draw rectangle"))?;
 
     Ok(())
 }
