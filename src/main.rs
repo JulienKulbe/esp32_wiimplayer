@@ -10,7 +10,9 @@ use embedded_graphics::{
     primitives::{PrimitiveStyleBuilder, Rectangle},
     text::Text,
 };
+use embedded_svc::wifi::{ClientConfiguration, Configuration};
 use esp_idf_hal::{delay::Ets, gpio::*, peripherals::Peripherals};
+use esp_idf_svc::{eventloop::EspSystemEventLoop, nvs::EspDefaultNvsPartition, wifi::EspWifi};
 use mipidsi::{models::ST7789, Builder, Display, Orientation};
 use std::{thread, time::Duration};
 
@@ -74,6 +76,22 @@ fn main() -> Result<()> {
         .init(&mut delay, Some(rst))
         .unwrap();
 
+    // WIFI
+    let sys_loop = EspSystemEventLoop::take().unwrap();
+    let nvs = EspDefaultNvsPartition::take().unwrap();
+    let mut wifi_driver = EspWifi::new(peripherals.modem, sys_loop, Some(nvs)).unwrap();
+
+    wifi_driver
+        .set_configuration(&Configuration::Client(ClientConfiguration {
+            ssid: "HubbelNetz".into(),
+            password: "kleinerhubbelimgrossennetz".into(),
+            ..Default::default()
+        }))
+        .unwrap();
+
+    wifi_driver.start().unwrap();
+    wifi_driver.connect().unwrap();
+
     // turn on the backlight
     backlight.set_high()?;
     //let raw_image_data = ImageRawLE::new(include_bytes!("../examples/assets/ferris.raw"), 86);
@@ -86,13 +104,19 @@ fn main() -> Result<()> {
     println!("Cleared display!");
 
     loop {
+        if wifi_driver.is_connected()? {
+            println!("Wifi conected!");
+        } else {
+            println!("Wifi failed!");
+        }
+
         draw_rectangle(&mut display, Rgb565::GREEN, 300)?;
         draw_rectangle(&mut display, Rgb565::BLUE, 250)?;
         draw_rectangle(&mut display, Rgb565::RED, 200)?;
         draw_rectangle(&mut display, Rgb565::MAGENTA, 150)?;
         draw_rectangle(&mut display, Rgb565::YELLOW, 100)?;
         draw_rectangle(&mut display, Rgb565::CYAN, 50)?;
-        thread::sleep(Duration::from_secs(30));
+        thread::sleep(Duration::from_secs(5));
 
         // set_display_color(&mut display, Rgb565::GREEN, "GREEN")?;
         // set_display_color(&mut display, Rgb565::RED, "RED")?;
