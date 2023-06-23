@@ -10,9 +10,17 @@ use embedded_graphics::{
     primitives::{PrimitiveStyleBuilder, Rectangle},
     text::Text,
 };
-use embedded_svc::wifi::{ClientConfiguration, Configuration};
+use embedded_svc::{
+    http::{client::Client as HttpClient, Method},
+    utils::io,
+    wifi::{ClientConfiguration, Configuration},
+};
 use esp_idf_hal::{delay::Ets, gpio::*, peripherals::Peripherals};
-use esp_idf_svc::{eventloop::EspSystemEventLoop, nvs::EspDefaultNvsPartition, wifi::EspWifi};
+use esp_idf_svc::{
+    eventloop::EspSystemEventLoop, http::client::EspHttpConnection, nvs::EspDefaultNvsPartition,
+    wifi::EspWifi,
+};
+use log::{error, info};
 use mipidsi::{models::ST7789, Builder, Display, Orientation};
 use std::{thread, time::Duration};
 
@@ -106,6 +114,9 @@ fn main() -> Result<()> {
     loop {
         if wifi_driver.is_connected()? {
             println!("Wifi conected!");
+
+            let mut client = HttpClient::wrap(EspHttpConnection::new(&Default::default())?);
+            get_request(&mut client)?;
         } else {
             println!("Wifi failed!");
         }
@@ -150,6 +161,41 @@ fn draw_rectangle(display: &mut LgDisplay, color: Rgb565, size: u32) -> Result<(
         .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build())
         .draw(display)
         .map_err(|_| anyhow!("unable to draw rectangle"))?;
+
+    Ok(())
+}
+
+fn get_request(client: &mut HttpClient<EspHttpConnection>) -> Result<()> {
+    // Prepare headers and URL
+    let headers = [("accept", "text/plain"), ("connection", "close")];
+    let url = "http://ifconfig.net/";
+
+    // Send request
+    //
+    // Note: If you don't want to pass in any headers, you can also use `client.get(url, headers)`.
+    let request = client.request(Method::Get, url, &headers)?;
+    info!("-> GET {}", url);
+    let mut response = request.submit()?;
+
+    // Process response
+    let status = response.status();
+    info!("<- {}", status);
+    let (_headers, mut body) = response.split();
+
+    let mut buf = [0u8; 1024];
+    let bytes_read = io::try_read_full(&mut body, &mut buf).map_err(|e| e.0)?;
+    info!("Read {} bytes", bytes_read);
+    match std::str::from_utf8(&buf[0..bytes_read]) {
+        Ok(body_string) => info!(
+            "Response body (truncated to {} bytes): {:?}",
+            buf.len(),
+            body_string
+        ),
+        Err(e) => error!("Error decoding response body: {}", e),
+    };
+
+    // Drain the remaining response bytes
+    while body.read(&mut buf)? > 0 {}
 
     Ok(())
 }
