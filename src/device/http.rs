@@ -1,18 +1,21 @@
-use anyhow::Result;
+use anyhow::{bail, Result};
 use embedded_svc::{
     http::{client::Client, Method},
     utils::io,
-    wifi::{ClientConfiguration, Configuration},
+    wifi::{self, AuthMethod, ClientConfiguration},
 };
 use esp_idf_hal::modem::Modem;
 use esp_idf_svc::{
-    eventloop::EspSystemEventLoop, http::client::EspHttpConnection, nvs::EspDefaultNvsPartition,
-    wifi::EspWifi,
+    eventloop::EspSystemEventLoop,
+    http::{self, client::EspHttpConnection},
+    nvs::EspDefaultNvsPartition,
+    tls::X509,
+    wifi::{BlockingWifi, EspWifi},
 };
 use log::{error, info};
 
 pub struct HttpClient {
-    wifi: EspWifi<'static>,
+    _wifi: BlockingWifi<EspWifi<'static>>,
     client: Client<EspHttpConnection>,
 }
 
@@ -21,42 +24,56 @@ impl HttpClient {
         // WIFI
         let sys_loop = EspSystemEventLoop::take().unwrap();
         let nvs = EspDefaultNvsPartition::take().unwrap();
-        let mut wifi_driver = EspWifi::new(modem, sys_loop, Some(nvs)).unwrap();
+        let mut wifi_driver = BlockingWifi::wrap(
+            EspWifi::new(modem, sys_loop.clone(), Some(nvs)).unwrap(),
+            sys_loop,
+        )
+        .unwrap();
 
         wifi_driver
-            .set_configuration(&Configuration::Client(ClientConfiguration {
+            .set_configuration(&wifi::Configuration::Client(ClientConfiguration {
                 ssid: "HubbelNetz".into(),
                 password: "kleinerhubbelimgrossennetz".into(),
+                auth_method: AuthMethod::WPA2Personal,
                 ..Default::default()
             }))
             .unwrap();
 
         wifi_driver.start().unwrap();
-        wifi_driver.connect().unwrap();
+        info!("Wifi started");
 
-        let connection = EspHttpConnection::new(&Default::default()).unwrap();
+        wifi_driver.connect().unwrap();
+        info!("Wifi connect");
+
+        wifi_driver.wait_netif_up().unwrap();
+        info!("Wifi connected");
+
+        let config = http::client::Configuration {
+            ..Default::default()
+        };
+        let connection = EspHttpConnection::new(&config).unwrap();
         let client = Client::wrap(connection);
 
+        info!("Created and connected Wifi");
+
         Self {
-            wifi: wifi_driver,
+            _wifi: wifi_driver,
             client,
         }
     }
 
-    pub fn is_connected(&self) -> Result<bool> {
-        let connected = self.wifi.is_connected()?;
-        Ok(connected)
-    }
+    pub fn get_request(&mut self, url: &str) -> Result<()> {
+        // if !self.is_connected()? {
+        //     bail!("WiFi not connected");
+        // }
 
-    pub fn get_request(&mut self) -> Result<()> {
         // Prepare headers and URL
         let headers = [("accept", "text/plain"), ("connection", "close")];
-        let url = "http://ifconfig.net/";
 
         // Send request
         //
         // Note: If you don't want to pass in any headers, you can also use `client.get(url, headers)`.
-        let request = self.client.request(Method::Get, url, &headers)?;
+        let request = self.client.get(url)?;
         info!("-> GET {}", url);
         let mut response = request.submit()?;
 
@@ -65,9 +82,12 @@ impl HttpClient {
         info!("<- {}", status);
         let (_headers, mut body) = response.split();
 
-        let mut buf = [0u8; 1024];
+        let mut buf = [0u8; 2048];
         let bytes_read = io::try_read_full(&mut body, &mut buf).map_err(|e| e.0)?;
         info!("Read {} bytes", bytes_read);
+        // let message = std::str::from_utf8(&buf[0..bytes_read])?;
+        // let message = message.to_string();
+
         match std::str::from_utf8(&buf[0..bytes_read]) {
             Ok(body_string) => info!(
                 "Response body (truncated to {} bytes): {:?}",
@@ -81,5 +101,6 @@ impl HttpClient {
         while body.read(&mut buf)? > 0 {}
 
         Ok(())
+        //Ok(message)
     }
 }

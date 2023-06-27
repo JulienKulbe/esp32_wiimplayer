@@ -39,7 +39,11 @@ embedded-graphics = "0.8.0"
 mipidsi = "0.7"
 display-interface-spi = "0.4"
 
+# TODO: Replace this by own bigger font
+profont = "0.7"
+
 anyhow = "1"
+hex = "0.4.3"
 
 [build-dependencies]
 embuild = "0.31.2"

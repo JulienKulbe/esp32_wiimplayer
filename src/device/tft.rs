@@ -3,16 +3,17 @@ use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, alway
 use anyhow::{anyhow, Result};
 use display_interface_parallel_gpio::*;
 use embedded_graphics::{
-    mono_font::ascii::FONT_6X10,
     mono_font::MonoTextStyle,
+    mono_font::{ascii::FONT_6X10, iso_8859_1::FONT_10X20},
     pixelcolor::Rgb565,
     prelude::*,
     primitives::{PrimitiveStyleBuilder, Rectangle},
-    text::Text,
+    text::{renderer::TextRenderer, LineHeight, Text, TextStyleBuilder},
 };
 use esp_idf_hal::{delay::Ets, gpio::*};
 use log::info;
 use mipidsi::{models::ST7789, Builder, Display, Orientation};
+use profont::*;
 
 // region:    --- Type Aliases
 type LgBus<'a> = Generic8BitBus<
@@ -50,7 +51,7 @@ pub struct TftPins {
 
 pub struct TftDisplay {
     display: LgDisplay,
-    rd: PinDriver<'static, Gpio9, Output>,
+    _rd: PinDriver<'static, Gpio9, Output>,
 }
 
 impl TftDisplay {
@@ -83,7 +84,7 @@ impl TftDisplay {
         // create driver
         let mut display = Builder::st7789(di)
             .with_display_size(170, 320)
-            .with_orientation(Orientation::Portrait(true))
+            .with_orientation(Orientation::Landscape(true))
             .with_invert_colors(mipidsi::ColorInversion::Inverted)
             .init(&mut delay, Some(rst))
             .unwrap();
@@ -95,10 +96,40 @@ impl TftDisplay {
 
         // draw image on red background
         //ferris.draw(&mut display).unwrap();
-        display.clear(Rgb565::YELLOW).unwrap();
+        display.clear(Rgb565::BLACK).unwrap();
         info!("Cleared display!");
 
-        Self { display, rd }
+        Self { display, _rd: rd }
+    }
+
+    pub fn draw(&mut self) -> Result<()> {
+        // Rectangle::new(Point::new(10, 70), Size::new(120, 120))
+        //     .into_styled(
+        //         PrimitiveStyleBuilder::new()
+        //             .fill_color(Rgb565::BLUE)
+        //             .build(),
+        //     )
+        //     .draw(&mut self.display)
+        //     .map_err(|_| anyhow!("unable to draw rectangle"))?;
+
+        let text_style = MonoTextStyle::new(&PROFONT_24_POINT, Rgb565::WHITE);
+        Text::new("MOGWAI", Point::new(10, 120), text_style)
+            .draw(&mut self.display)
+            .unwrap();
+
+        // Text::new(
+        //     "To The Bin My Friend, To...",
+        //     Point::new(-20, 120),
+        //     text_style,
+        // )
+        // .draw(&mut self.display)
+        // .map_err(|_| anyhow!("unable to draw text"))?;
+
+        // Text::new("As The Love Continues", Point::new(10, 160), text_style)
+        //     .draw(&mut self.display)
+        //     .map_err(|_| anyhow!("unable to draw text"))?;
+
+        Ok(())
     }
 
     pub fn draw_rectangle(&mut self, color: Rgb565, size: u32) -> Result<()> {
