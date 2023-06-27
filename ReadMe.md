@@ -9,8 +9,8 @@
 - [x] General UI
 - [ ] Bigger Font Style
 - [ ] Running TextBlock
-- [ ] Wiim Request
-- [ ] JSON Message Deserialization
+- [x] Wiim Request
+- [x] JSON Message Deserialization
 - [ ] Async Background Thread
 - [ ] Display Wiim Audio Data
 - [ ] Read Settings File

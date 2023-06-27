@@ -3,12 +3,12 @@ use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, alway
 use anyhow::{anyhow, Result};
 use display_interface_parallel_gpio::*;
 use embedded_graphics::{
+    mono_font::ascii::FONT_6X10,
     mono_font::MonoTextStyle,
-    mono_font::{ascii::FONT_6X10, iso_8859_1::FONT_10X20},
     pixelcolor::Rgb565,
     prelude::*,
     primitives::{PrimitiveStyleBuilder, Rectangle},
-    text::{renderer::TextRenderer, LineHeight, Text, TextStyleBuilder},
+    text::Text,
 };
 use esp_idf_hal::{delay::Ets, gpio::*};
 use log::info;

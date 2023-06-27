@@ -39,11 +39,13 @@ embedded-graphics = "0.8.0"
 mipidsi = "0.7"
 display-interface-spi = "0.4"
 
+anyhow = "1"
+serde = { version = "1.0", default-features = false, features = ["derive"] }
+serde_json = { version = "1.0", default-features = false, features = ["alloc"] }
+hex = "0.4.3"
+
 # TODO: Replace this by own bigger font
 profont = "0.7"
-
-anyhow = "1"
-hex = "0.4.3"
 
 [build-dependencies]
 embuild = "0.31.2"

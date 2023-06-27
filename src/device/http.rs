@@ -11,7 +11,7 @@ use esp_idf_svc::{
     nvs::EspDefaultNvsPartition,
     wifi::{BlockingWifi, EspWifi},
 };
-use log::{error, info};
+use log::info;
 
 pub struct HttpClient {
     _wifi: BlockingWifi<EspWifi<'static>>,
@@ -56,7 +56,7 @@ impl HttpClient {
         Ok(Client::wrap(connection))
     }
 
-    pub fn get_request(&mut self, url: &str) -> Result<()> {
+    pub fn get_request(&mut self, url: &str) -> Result<String> {
         // create HTTP client
         let mut client = self.create_client()?;
 
@@ -73,22 +73,9 @@ impl HttpClient {
         let mut buf = [0u8; 2048];
         let bytes_read = io::try_read_full(&mut body, &mut buf).map_err(|e| e.0)?;
         info!("Read {} bytes", bytes_read);
-        // let message = std::str::from_utf8(&buf[0..bytes_read])?;
-        // let message = message.to_string();
+        let message = std::str::from_utf8(&buf[0..bytes_read])?;
+        let message = message.to_string();
 
-        match std::str::from_utf8(&buf[0..bytes_read]) {
-            Ok(body_string) => info!(
-                "Response body (truncated to {} bytes): {:?}",
-                buf.len(),
-                body_string
-            ),
-            Err(e) => error!("Error decoding response body: {}", e),
-        };
-
-        // Drain the remaining response bytes
-        while body.read(&mut buf)? > 0 {}
-
-        Ok(())
-        //Ok(message)
+        Ok(message)
     }
 }
