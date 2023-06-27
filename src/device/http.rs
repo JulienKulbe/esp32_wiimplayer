@@ -1,6 +1,6 @@
-use anyhow::{bail, Result};
+use anyhow::Result;
 use embedded_svc::{
-    http::{client::Client, Method},
+    http::client::Client,
     utils::io,
     wifi::{self, AuthMethod, ClientConfiguration},
 };
@@ -9,19 +9,16 @@ use esp_idf_svc::{
     eventloop::EspSystemEventLoop,
     http::{self, client::EspHttpConnection},
     nvs::EspDefaultNvsPartition,
-    tls::X509,
     wifi::{BlockingWifi, EspWifi},
 };
 use log::{error, info};
 
 pub struct HttpClient {
     _wifi: BlockingWifi<EspWifi<'static>>,
-    client: Client<EspHttpConnection>,
 }
 
 impl HttpClient {
     pub fn new(modem: Modem) -> Self {
-        // WIFI
         let sys_loop = EspSystemEventLoop::take().unwrap();
         let nvs = EspDefaultNvsPartition::take().unwrap();
         let mut wifi_driver = BlockingWifi::wrap(
@@ -48,32 +45,23 @@ impl HttpClient {
         wifi_driver.wait_netif_up().unwrap();
         info!("Wifi connected");
 
+        Self { _wifi: wifi_driver }
+    }
+
+    pub fn create_client(&mut self) -> Result<Client<EspHttpConnection>> {
         let config = http::client::Configuration {
             ..Default::default()
         };
-        let connection = EspHttpConnection::new(&config).unwrap();
-        let client = Client::wrap(connection);
-
-        info!("Created and connected Wifi");
-
-        Self {
-            _wifi: wifi_driver,
-            client,
-        }
+        let connection = EspHttpConnection::new(&config)?;
+        Ok(Client::wrap(connection))
     }
 
     pub fn get_request(&mut self, url: &str) -> Result<()> {
-        // if !self.is_connected()? {
-        //     bail!("WiFi not connected");
-        // }
-
-        // Prepare headers and URL
-        let headers = [("accept", "text/plain"), ("connection", "close")];
+        // create HTTP client
+        let mut client = self.create_client()?;
 
         // Send request
-        //
-        // Note: If you don't want to pass in any headers, you can also use `client.get(url, headers)`.
-        let request = self.client.get(url)?;
+        let request = client.get(url)?;
         info!("-> GET {}", url);
         let mut response = request.submit()?;
 

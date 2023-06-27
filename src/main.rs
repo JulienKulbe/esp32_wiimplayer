@@ -1,7 +1,6 @@
 use crate::device::Device;
 use anyhow::Result;
-use embedded_graphics::{pixelcolor::Rgb565, prelude::*};
-use log::info;
+use log::{error, info};
 use std::{thread, time::Duration};
 
 mod device;
@@ -13,11 +12,13 @@ fn main() -> Result<()> {
     thread::sleep(Duration::from_secs(5));
 
     loop {
-        //let url = "https://192.168.1.48/httpapi.asp?command=getPlayerStatus";
-        let url = "http://ifconfig.net/";
+        let url = "https://192.168.1.48/httpapi.asp?command=getPlayerStatus";
 
         info!("Create new request");
-        device.http.get_request(url)?;
+        match device.http.get_request(url) {
+            Ok(_) => info!("SUCCESS"),
+            Err(msg) => error!("ERROR: {msg}"),
+        }
 
         //device.tft.draw()?;
 
