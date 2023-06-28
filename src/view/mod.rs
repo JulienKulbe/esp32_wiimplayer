@@ -1,1 +1,1 @@
-pub mod audio_player_view;
+pub mod player_ui;

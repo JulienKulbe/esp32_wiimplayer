@@ -7,11 +7,13 @@
 - [x] WiFi Integration
 - [x] GET-Request per HTTP-Client
 - [x] General UI
-- [ ] Bigger Font Style
-- [ ] Running TextBlock
 - [x] Wiim Request
 - [x] JSON Message Deserialization
+- [x] Display Wiim Audio Data
+- [ ] Bigger Font Style
+- [ ] Running TextBlock
 - [ ] Async Background Thread
-- [ ] Display Wiim Audio Data
+- [ ] Optimize Display Refresh
 - [ ] Read Settings File
+- [ ] Increase CPU Clock speed
 - [ ] ...

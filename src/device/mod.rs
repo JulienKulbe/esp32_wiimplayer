@@ -6,8 +6,8 @@ use self::{
 };
 use esp_idf_hal::peripherals::Peripherals;
 
-mod http;
-mod tft;
+pub mod http;
+pub mod tft;
 
 pub struct Device {
     pub http: HttpClient,

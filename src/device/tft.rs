@@ -1,13 +1,12 @@
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use display_interface_parallel_gpio::*;
 use embedded_graphics::{
-    mono_font::ascii::FONT_6X10,
     mono_font::MonoTextStyle,
     pixelcolor::Rgb565,
     prelude::*,
-    primitives::{PrimitiveStyleBuilder, Rectangle},
+    primitives::{PrimitiveStyle, Rectangle},
     text::Text,
 };
 use esp_idf_hal::{delay::Ets, gpio::*};
@@ -47,6 +46,12 @@ pub struct TftPins {
     pub d5: Gpio46,
     pub d6: Gpio47,
     pub d7: Gpio48,
+}
+
+pub enum TextLine {
+    Line1,
+    Line2,
+    Line3,
 }
 
 pub struct TftDisplay {
@@ -91,73 +96,27 @@ impl TftDisplay {
 
         // turn on the backlight
         backlight.set_high().unwrap();
-        //let raw_image_data = ImageRawLE::new(include_bytes!("../examples/assets/ferris.raw"), 86);
-        //let ferris = Image::new(&raw_image_data, Point::new(0, 0));
 
-        // draw image on red background
-        //ferris.draw(&mut display).unwrap();
         display.clear(Rgb565::BLACK).unwrap();
         info!("Cleared display!");
 
         Self { display, _rd: rd }
     }
 
-    pub fn draw(&mut self) -> Result<()> {
-        // Rectangle::new(Point::new(10, 70), Size::new(120, 120))
-        //     .into_styled(
-        //         PrimitiveStyleBuilder::new()
-        //             .fill_color(Rgb565::BLUE)
-        //             .build(),
-        //     )
-        //     .draw(&mut self.display)
-        //     .map_err(|_| anyhow!("unable to draw rectangle"))?;
+    pub fn draw_text(&mut self, line: TextLine, text: &str) -> Result<()> {
+        let y_pos = 80 + line as i32 * 40;
 
-        let text_style = MonoTextStyle::new(&PROFONT_24_POINT, Rgb565::WHITE);
-        Text::new("MOGWAI", Point::new(10, 120), text_style)
+        // draw rectangle
+        Rectangle::new(Point::new(0, y_pos - 24), Size::new(320, 30))
+            .into_styled(PrimitiveStyle::with_fill(Rgb565::BLACK))
             .draw(&mut self.display)
             .unwrap();
 
-        // Text::new(
-        //     "To The Bin My Friend, To...",
-        //     Point::new(-20, 120),
-        //     text_style,
-        // )
-        // .draw(&mut self.display)
-        // .map_err(|_| anyhow!("unable to draw text"))?;
-
-        // Text::new("As The Love Continues", Point::new(10, 160), text_style)
-        //     .draw(&mut self.display)
-        //     .map_err(|_| anyhow!("unable to draw text"))?;
-
-        Ok(())
-    }
-
-    pub fn draw_rectangle(&mut self, color: Rgb565, size: u32) -> Result<()> {
-        Rectangle::new(Point::new(0, 0), Size::new(size, size))
-            .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build())
+        // draw text
+        let text_style = MonoTextStyle::new(&PROFONT_24_POINT, Rgb565::WHITE);
+        Text::new(text, Point::new(10, y_pos), text_style)
             .draw(&mut self.display)
-            .map_err(|_| anyhow!("unable to draw rectangle"))?;
-
-        info!("Draw Rectangle");
-
-        Ok(())
-    }
-
-    pub fn set_display_color(&mut self, color: Rgb565, text: &str) -> Result<()> {
-        info!("Draw color {text}");
-
-        Rectangle::new(Point::new(50, 50), Size::new(200, 100))
-            .into_styled(PrimitiveStyleBuilder::new().fill_color(color).build())
-            .draw(&mut self.display)
-            .map_err(|_| anyhow!("unable to draw rectangle"))?;
-
-        // Create a new character style
-        let style = MonoTextStyle::new(&FONT_6X10, Rgb565::WHITE);
-
-        Text::new(text, Point::new(100, 50), style)
-            .draw(&mut self.display)
-            .map_err(|_| anyhow!("unable to draw text"))?;
-
+            .unwrap();
         Ok(())
     }
 }
