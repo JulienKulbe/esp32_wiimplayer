@@ -15,7 +15,7 @@ fn main() -> Result<()> {
     let mut ui = PlayerUi::new(&mut device.tft);
 
     loop {
-        if let Ok(data) = player.update() {
+        if let Some(data) = player.update() {
             ui.update(data)?;
         }
 

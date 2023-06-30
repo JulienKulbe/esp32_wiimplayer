@@ -1,7 +1,8 @@
-use self::player_status::PlayerStatus;
-use crate::device::http::HttpClient;
+use crate::{device::http::HttpClient, model::player_status::PlayerStatus};
 use anyhow::Result;
 use log::info;
+
+use self::player_status::TrackInfo;
 
 pub mod player_status;
 
@@ -9,22 +10,49 @@ static WIIM_URL: &str = "https://192.168.1.48/httpapi.asp?command=getPlayerStatu
 
 pub struct AudioPlayer<'a> {
     http_client: &'a mut HttpClient,
+    status: Option<TrackInfo>,
 }
 
 impl<'a> AudioPlayer<'a> {
     pub fn new(http_client: &'a mut HttpClient) -> AudioPlayer<'a> {
-        Self { http_client }
+        Self {
+            http_client,
+            status: None,
+        }
     }
 
-    pub fn update(&mut self) -> Result<PlayerStatus> {
+    pub fn update(&mut self) -> Option<&TrackInfo> {
+        let data = self.request_server_data().ok();
+
+        // change updated if we have new data received
+        let mut updated = None;
+
+        if let Some(current) = data {
+            match self.status.as_ref() {
+                Some(prev) => {
+                    if current != *prev {
+                        updated = self.update_track_data(current);
+                    }
+                }
+                None => {
+                    updated = self.update_track_data(current);
+                }
+            };
+        }
+
+        updated
+    }
+
+    fn request_server_data(&mut self) -> Result<TrackInfo> {
         info!("Update WiiM status");
         let message = self.http_client.get_request(WIIM_URL)?;
         let status = serde_json::from_str::<PlayerStatus>(&message)?;
+        let track = status.get_track_info()?;
+        Ok(track)
+    }
 
-        info!("Artist: {}", status.get_artist()?);
-        info!("Title: {}", status.get_title()?);
-        info!("Album: {}", status.get_album()?);
-
-        Ok(status)
+    fn update_track_data(&mut self, data: TrackInfo) -> Option<&TrackInfo> {
+        self.status = Some(data);
+        self.status.as_ref()
     }
 }

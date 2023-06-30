@@ -10,10 +10,10 @@
 - [x] Wiim Request
 - [x] JSON Message Deserialization
 - [x] Display Wiim Audio Data
-- [ ] Bigger Font Style
+- [x] Display data only if new data is available
 - [ ] Running TextBlock
 - [ ] Async Background Thread
-- [ ] Optimize Display Refresh
+- [ ] Bigger Font Style
 - [ ] Read Settings File
 - [ ] Increase CPU Clock speed
 - [ ] ...

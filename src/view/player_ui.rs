@@ -1,6 +1,6 @@
 use crate::{
     device::tft::{TextLine, TftDisplay},
-    model::player_status::PlayerStatus,
+    model::player_status::TrackInfo,
 };
 use anyhow::Result;
 
@@ -13,13 +13,13 @@ impl<'a> PlayerUi<'a> {
         Self { display }
     }
 
-    pub fn update(&mut self, data: PlayerStatus) -> Result<()> {
+    pub fn update(&mut self, data: &TrackInfo) -> Result<()> {
         self.display
-            .draw_text(TextLine::Line1, data.get_artist()?.as_str())?;
+            .draw_text(TextLine::Line1, data.artist.as_str())?;
         self.display
-            .draw_text(TextLine::Line2, data.get_title()?.as_str())?;
+            .draw_text(TextLine::Line2, data.title.as_str())?;
         self.display
-            .draw_text(TextLine::Line3, data.get_album()?.as_str())?;
+            .draw_text(TextLine::Line3, data.album.as_str())?;
 
         Ok(())
     }

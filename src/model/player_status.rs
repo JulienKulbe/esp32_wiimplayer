@@ -1,6 +1,13 @@
 use anyhow::Result;
 use serde::Deserialize;
 
+#[derive(Debug, PartialEq, Eq)]
+pub struct TrackInfo {
+    pub title: String,
+    pub artist: String,
+    pub album: String,
+}
+
 #[derive(Debug, Deserialize)]
 pub struct PlayerStatus {
     #[serde(alias = "Title")]
@@ -12,15 +19,23 @@ pub struct PlayerStatus {
 }
 
 impl PlayerStatus {
-    pub fn get_title(&self) -> Result<String> {
+    pub fn get_track_info(&self) -> Result<TrackInfo> {
+        Ok(TrackInfo {
+            title: self.get_title()?,
+            artist: self.get_artist()?,
+            album: self.get_album()?,
+        })
+    }
+
+    fn get_title(&self) -> Result<String> {
         Self::decode_data_to_string(&self.title)
     }
 
-    pub fn get_artist(&self) -> Result<String> {
+    fn get_artist(&self) -> Result<String> {
         Self::decode_data_to_string(&self.artist)
     }
 
-    pub fn get_album(&self) -> Result<String> {
+    fn get_album(&self) -> Result<String> {
         Self::decode_data_to_string(&self.album)
     }
 
