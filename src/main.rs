@@ -1,6 +1,5 @@
 use crate::device::Device;
 use anyhow::Result;
-use log::info;
 use model::AudioPlayer;
 use std::{thread, time::Duration};
 use view::player_ui::PlayerUi;
@@ -16,10 +15,11 @@ fn main() -> Result<()> {
 
     loop {
         if let Some(data) = player.update() {
-            ui.update(data)?;
+            ui.set_track_info(data);
         }
 
-        info!("Wait for 1sec...");
-        thread::sleep(Duration::from_secs(1));
+        ui.update();
+
+        thread::sleep(Duration::from_secs_f32(1. / 10.));
     }
 }

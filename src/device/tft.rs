@@ -1,12 +1,10 @@
 use esp_idf_sys as _; // If using the `binstart` feature of `esp-idf-sys`, always keep this module imported
 
-use anyhow::Result;
 use display_interface_parallel_gpio::*;
 use embedded_graphics::{
-    mono_font::MonoTextStyle,
+    mono_font::{MonoTextStyle, MonoTextStyleBuilder},
     pixelcolor::Rgb565,
     prelude::*,
-    primitives::{PrimitiveStyle, Rectangle},
     text::Text,
 };
 use esp_idf_hal::{delay::Ets, gpio::*};
@@ -48,15 +46,10 @@ pub struct TftPins {
     pub d7: Gpio48,
 }
 
-pub enum TextLine {
-    Line1,
-    Line2,
-    Line3,
-}
-
 pub struct TftDisplay {
     display: LgDisplay,
     _rd: PinDriver<'static, Gpio9, Output>,
+    text_style: MonoTextStyle<'static, Rgb565>,
 }
 
 impl TftDisplay {
@@ -100,23 +93,27 @@ impl TftDisplay {
         display.clear(Rgb565::BLACK).unwrap();
         info!("Cleared display!");
 
-        Self { display, _rd: rd }
+        let text_style = MonoTextStyleBuilder::new()
+            .font(&PROFONT_24_POINT)
+            .text_color(Rgb565::WHITE)
+            .background_color(Rgb565::BLACK)
+            .build();
+
+        Self {
+            display,
+            _rd: rd,
+            text_style,
+        }
     }
 
-    pub fn draw_text(&mut self, line: TextLine, text: &str) -> Result<()> {
-        let y_pos = 80 + line as i32 * 40;
+    pub fn reset(&mut self) {
+        self.display.clear(Rgb565::BLACK).unwrap();
+        info!("Cleared display!");
+    }
 
-        // draw rectangle
-        Rectangle::new(Point::new(0, y_pos - 24), Size::new(320, 30))
-            .into_styled(PrimitiveStyle::with_fill(Rgb565::BLACK))
+    pub fn draw_text(&mut self, text: &str, x: i32, y: i32) {
+        Text::new(text, Point::new(x, y), self.text_style)
             .draw(&mut self.display)
             .unwrap();
-
-        // draw text
-        let text_style = MonoTextStyle::new(&PROFONT_24_POINT, Rgb565::WHITE);
-        Text::new(text, Point::new(10, y_pos), text_style)
-            .draw(&mut self.display)
-            .unwrap();
-        Ok(())
     }
 }
