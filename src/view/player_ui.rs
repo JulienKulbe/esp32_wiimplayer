@@ -1,3 +1,5 @@
+use log::info;
+
 use super::scroll_textblock::TextBlock;
 use crate::{device::tft::TftDisplay, model::player_status::TrackInfo};
 use std::sync::mpsc::Receiver;
@@ -34,7 +36,7 @@ impl PlayerUi {
     }
 
     fn set_track_info(&mut self, data: TrackInfo) {
-        println!(
+        info!(
             "Current track: {}-{} ({})",
             data.artist, data.title, data.album
         );

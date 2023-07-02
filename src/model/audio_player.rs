@@ -21,7 +21,7 @@ impl AudioPlayer {
     }
 
     pub fn update(&mut self) -> Option<&TrackInfo> {
-        println!("Request server data");
+        info!("Request server data");
         let data = self.request_server_data().ok();
 
         // change updated if we have new data received

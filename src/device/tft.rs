@@ -108,7 +108,6 @@ impl TftDisplay {
 
     pub fn reset(&mut self) {
         self.display.clear(Rgb565::BLACK).unwrap();
-        info!("Cleared display!");
     }
 
     pub fn draw_text(&mut self, text: &str, x: i32, y: i32) {
