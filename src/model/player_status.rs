@@ -1,7 +1,7 @@
 use anyhow::Result;
 use serde::Deserialize;
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Deserialize, Clone)]
 pub struct TrackInfo {
     pub title: String,
     pub artist: String,

@@ -14,11 +14,16 @@ use esp_idf_svc::{
 use log::info;
 
 pub struct HttpClient {
-    _wifi: BlockingWifi<EspWifi<'static>>,
+    modem: Option<Modem>,
 }
 
 impl HttpClient {
     pub fn new(modem: Modem) -> Self {
+        Self { modem: Some(modem) }
+    }
+
+    pub fn connect_wifi(&mut self) {
+        let modem = self.modem.take().unwrap();
         let sys_loop = EspSystemEventLoop::take().unwrap();
         let nvs = EspDefaultNvsPartition::take().unwrap();
         let mut wifi_driver = BlockingWifi::wrap(
@@ -45,7 +50,12 @@ impl HttpClient {
         wifi_driver.wait_netif_up().unwrap();
         info!("Wifi connected");
 
-        Self { _wifi: wifi_driver }
+        // Keep wifi running beyond when this function returns (forever)
+        // Do not call this if you ever want to stop or access it later.
+        // Otherwise it should be returned from this function and kept somewhere
+        // so it does not go out of scope.
+        // https://doc.rust-lang.org/stable/core/mem/fn.forget.html
+        core::mem::forget(wifi_driver);
     }
 
     pub fn create_client(&mut self) -> Result<Client<EspHttpConnection>> {
