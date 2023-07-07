@@ -13,8 +13,7 @@
 - [x] Display data only if new data is available
 - [x] Running TextBlock
 - [x] Scroll TextBlock back to start again
-- [ ] Async Background Thread
+- [x] Separate Background Thread
 - [ ] Bigger Font Style
 - [ ] Read Settings File
-- [ ] Increase CPU Clock speed
 - [ ] ...
