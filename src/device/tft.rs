@@ -23,6 +23,7 @@ type LgBus<'a> = Generic8BitBus<
     PinDriver<'a, Gpio47, Output>,
     PinDriver<'a, Gpio48, Output>,
 >;
+type BacklightPin<'a> = PinDriver<'a, Gpio38, Output>;
 type LgInterface<'a> =
     PGPIO8BitInterface<LgBus<'a>, PinDriver<'a, Gpio7, Output>, PinDriver<'a, Gpio8, Output>>;
 type LgDisplayLifetime<'a> = Display<LgInterface<'a>, ST7789, PinDriver<'a, Gpio5, Output>>;
@@ -48,6 +49,7 @@ pub struct TftPins {
 
 pub struct TftDisplay {
     display: LgDisplay,
+    backlight: BacklightPin<'static>,
     _rd: PinDriver<'static, Gpio9, Output>,
     text_style: MonoTextStyle<'static, Rgb565>,
 }
@@ -101,6 +103,7 @@ impl TftDisplay {
 
         Self {
             display,
+            backlight,
             _rd: rd,
             text_style,
         }
@@ -114,5 +117,13 @@ impl TftDisplay {
         Text::new(text, Point::new(x, y), self.text_style)
             .draw(&mut self.display)
             .unwrap();
+    }
+
+    pub fn set_enable(&mut self, enabled: bool) {
+        if enabled {
+            self.backlight.set_high().unwrap();
+        } else {
+            self.backlight.set_low().unwrap();
+        }
     }
 }

@@ -27,7 +27,7 @@ impl PlayerUi {
 
     pub fn update(&mut self) {
         if let Ok(info) = self.receiver.try_recv() {
-            self.set_track_info(info)
+            self.set_track_info(info);
         }
 
         for text in self.text_blocks.iter_mut() {
@@ -41,6 +41,7 @@ impl PlayerUi {
             data.artist, data.title, data.album
         );
 
+        self.display.set_enable(data.is_playing);
         self.display.reset();
 
         self.text_blocks[0].set_text(data.artist.as_str());

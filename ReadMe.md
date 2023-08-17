@@ -1,5 +1,11 @@
 # WiiM-Pro Audio Display
 
+## Build
+
+Precondition: `. $HOME/export-esp.sh`
+Build: `cargo build`
+Flash:
+
 ## Work Items
 
 - [x] ESP32 Inbetriebnahme (Toolchain)
@@ -14,6 +20,7 @@
 - [x] Running TextBlock
 - [x] Scroll TextBlock back to start again
 - [x] Separate Background Thread
+- [x] Sleep Mode if paused
 - [ ] Bigger Font Style
 - [ ] Read Settings File
 - [ ] ...

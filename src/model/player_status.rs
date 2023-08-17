@@ -1,11 +1,21 @@
 use anyhow::Result;
 use serde::Deserialize;
 
+#[derive(Debug, Deserialize, Clone, Copy, PartialEq)]
+#[serde(rename_all = "camelCase")]
+pub enum PlaybackStatus {
+    Stop,
+    Play,
+    Loading,
+    Pause,
+}
+
 #[derive(Debug, PartialEq, Eq, Deserialize, Clone)]
 pub struct TrackInfo {
     pub title: String,
     pub artist: String,
     pub album: String,
+    pub is_playing: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -16,6 +26,7 @@ pub struct PlayerStatus {
     artist: String,
     #[serde(alias = "Album")]
     album: String,
+    status: PlaybackStatus,
 }
 
 impl PlayerStatus {
@@ -24,6 +35,7 @@ impl PlayerStatus {
             title: self.get_title()?,
             artist: self.get_artist()?,
             album: self.get_album()?,
+            is_playing: self.status == PlaybackStatus::Play,
         })
     }
 
