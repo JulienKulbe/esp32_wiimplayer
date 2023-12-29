@@ -1,3 +1,7 @@
+use embedded_graphics::text;
+use log::{debug, info};
+use serde_json::to_string;
+
 use crate::device::tft::TftDisplay;
 use std::cmp;
 
@@ -14,7 +18,7 @@ impl TextBlock {
             text: text.to_string(),
             y,
             needs_update: true,
-            index: CharacterIndex::new(text.len()),
+            index: CharacterIndex::new(text.chars().count()),
         }
     }
 
@@ -28,18 +32,28 @@ impl TextBlock {
         // if display need no update we skip the drawing to the screen
         if self.needs_update {
             let text = self.get_current_text_slice();
-            display.draw_text(text, 0, self.y);
+            display.draw_text(text.as_str(), 0, self.y);
         }
 
         self.needs_update = self.index.scroll();
     }
 
-    fn get_current_text_slice(&self) -> &str {
+    fn get_current_text_slice(&self) -> String {
         let (start, end) = self.index.range();
-        &self.text[start..end]
+
+        info!("Text slice: {:?}", self.index,);
+        info!(
+            "Text: {}, length: {}, chars: {}",
+            self.text,
+            self.text.len(),
+            self.text.chars().count()
+        );
+
+        self.text.chars().skip(start).take(end - start).collect()
     }
 }
 
+#[derive(Debug)]
 struct CharacterIndex {
     current: i32,
     end: i32,

@@ -4,7 +4,7 @@
 
 Precondition: `. $HOME/export-esp.sh`
 Build: `cargo build`
-Flash:
+Flash: `cargo run`
 
 ## Work Items
 
