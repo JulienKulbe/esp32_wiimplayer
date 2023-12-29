@@ -1,8 +1,5 @@
-use embedded_graphics::text;
-use log::{debug, info};
-use serde_json::to_string;
-
 use crate::device::tft::TftDisplay;
+use log::info;
 use std::cmp;
 
 pub struct TextBlock {
